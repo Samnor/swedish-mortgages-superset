@@ -8,52 +8,81 @@ The Superset app follows the same environment split as the dbt project:
 - `prod` reads `swedish_mortgages_prod_marts`
 
 The dbt deployment must run before Superset deployment for the same environment,
-because Superset imports datasets that point at dbt-managed Athena relations.
+because Superset imports datasets that point at dbt-managed Athena Iceberg
+relations.
 
-## GitHub Environments
+## Runtime Architecture
 
-Create two GitHub Environments in this repo:
+Superset runs on ECS Fargate behind an Application Load Balancer.
 
-- `dev`: deploys from `develop` or manual dispatch
-- `prod`: deploys from `main` and should require approval
+Each environment has separate:
 
-Environment variables:
+- ECS cluster, service, and task definition
+- ALB target group and security groups
+- CloudWatch log group
+- RDS Postgres metadata database
+- Secrets Manager secrets
+- ECS task role
+- GitHub Actions OIDC deploy role
 
-- `SUPERSET_DEPLOY_HOST`
-- `SUPERSET_DEPLOY_PORT`
-- `SUPERSET_DEPLOY_USER`
-- `SUPERSET_DEPLOY_PATH`
+The ECR repository is shared and images are tagged with:
+
+```text
+dev-<git-sha>
+prod-<git-sha>
+```
+
+## Secrets
+
+Runtime secrets live in AWS Secrets Manager:
+
+- `/swedish-mortgages/<env>/superset/secret-key`
+- `/swedish-mortgages/<env>/superset/admin-password`
+- `/swedish-mortgages/<env>/superset/database-uri`
+
+GitHub should not store Superset admin passwords, database URLs, or AWS access
+keys. GitHub Actions assumes an AWS role through OIDC.
+
+## GitHub Environment Variables
+
+Set these variables on both GitHub Environments, using the matching Terraform
+outputs for `dev` and `prod`:
+
+- `AWS_REGION`
+- `AWS_ROLE_ARN`
+- `ECR_REPOSITORY`
+- `ECS_CLUSTER`
+- `ECS_SERVICE`
+- `ECS_TASK_FAMILY`
+- `ECS_EXECUTION_ROLE_ARN`
+- `ECS_TASK_ROLE_ARN`
+- `ECS_LOG_GROUP`
 - `SUPERSET_PORT`
 - `SUPERSET_DATABASE_NAME`
 - `SUPERSET_ADMIN_USERNAME`
 - `SUPERSET_ADMIN_FIRSTNAME`
 - `SUPERSET_ADMIN_LASTNAME`
 - `SUPERSET_ADMIN_EMAIL`
-- `AWS_DEFAULT_REGION`
 - `ATHENA_REGION`
 - `ATHENA_DATABASE`
 - `ATHENA_SCHEMA`
 - `ATHENA_WORK_GROUP`
 - `ATHENA_S3_STAGING_DIR`
-- `TAILSCALE_BASE_URL`
+- `SUPERSET_SECRET_KEY_SECRET_ARN`
+- `SUPERSET_ADMIN_PASSWORD_SECRET_ARN`
+- `SUPERSET_DATABASE_URI_SECRET_ARN`
 
-Environment secrets:
+## Terraform
 
-- `SUPERSET_DEPLOY_SSH_KEY`
-- `SUPERSET_SECRET_KEY`
-- `SUPERSET_ADMIN_PASSWORD`
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_SESSION_TOKEN` when temporary credentials are used
+Infrastructure lives in `infra/terraform`.
 
-## Deployment Host
+Example:
 
-The remote host should have:
+```bash
+cd infra/terraform
+terraform init
+terraform plan -var-file=dev.tfvars
+terraform apply -var-file=dev.tfvars
+```
 
-- Docker and Docker Compose
-- this repository cloned at `SUPERSET_DEPLOY_PATH`
-- SSH access for `SUPERSET_DEPLOY_USER`
-- network access to Athena and to users through LAN, VPN, or Tailscale
-
-The deploy workflow writes the environment-specific `.env`, renders datasource
-metadata, starts Superset, imports datasets, and bootstraps the dashboard.
+Do not commit real `*.tfvars` files. Use the `.example` files as templates.

@@ -95,8 +95,7 @@ running the import.
 
 - Add richer charts beyond the starter dashboard for rate history, bank
   margins, and bank-vs-market comparisons.
-- Point the app at `swedish_mortgages_prod` after the dbt Cloud production
-  environment exists.
+- Point the app at `swedish_mortgages_prod_marts` for production.
 - Add a dbt exposure in the dbt repo with the final Superset dashboard URL.
 
 ## Dev and Prod Deployment
