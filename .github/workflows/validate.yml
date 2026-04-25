@@ -1,0 +1,32 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      SUPERSET_DATABASE_NAME: Athena Swedish Mortgages
+      ATHENA_SCHEMA: swedish_mortgages_dev_marts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile Python scripts
+        run: python -m py_compile assets/custom/create_mortgage_dashboard.py custom_pythonpath/superset_config.py scripts/render_datasources.py
+
+      - name: Render datasource metadata
+        run: python scripts/render_datasources.py
+
+      - name: Validate rendered datasource
+        run: test -s assets/datasources/swedish_mortgages.yaml

@@ -1,0 +1,39 @@
+services:
+  superset:
+    build: .
+    container_name: swedish-mortgages-superset
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${SUPERSET_PORT:-8088}:8088"
+    env_file: .env
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-eu-north-1}
+      ATHENA_REGION: ${ATHENA_REGION:-eu-north-1}
+      ATHENA_DATABASE: ${ATHENA_DATABASE:-awsdatacatalog}
+      ATHENA_SCHEMA: ${ATHENA_SCHEMA:-swedish_mortgages_dev_marts}
+      ATHENA_WORK_GROUP: ${ATHENA_WORK_GROUP:-primary}
+      ATHENA_S3_STAGING_DIR: ${ATHENA_S3_STAGING_DIR}
+      SUPERSET_DATABASE_NAME: ${SUPERSET_DATABASE_NAME:-Athena Swedish Mortgages}
+      TAILSCALE_BASE_URL: ${TAILSCALE_BASE_URL:-}
+    volumes:
+      - superset_home:/app/superset_home
+      - ./assets:/app/codex_assets:ro
+    command: >-
+      /bin/sh -c "
+      superset db upgrade &&
+      superset fab create-admin
+      --username \"${SUPERSET_ADMIN_USERNAME}\"
+      --firstname \"${SUPERSET_ADMIN_FIRSTNAME}\"
+      --lastname \"${SUPERSET_ADMIN_LASTNAME}\"
+      --email \"${SUPERSET_ADMIN_EMAIL}\"
+      --password \"${SUPERSET_ADMIN_PASSWORD}\" 2>/dev/null || true &&
+      superset init &&
+      superset run -h 0.0.0.0 -p 8088 --with-threads"
+
+volumes:
+  superset_home:

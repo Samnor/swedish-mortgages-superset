@@ -1,0 +1,12 @@
+databases:
+  - database_name: ${SUPERSET_DATABASE_NAME}
+    tables:
+      - table_name: rates_daily
+        schema: ${ATHENA_SCHEMA}
+        description: Daily government, covered-bond, and spread views for Swedish mortgage rates.
+      - table_name: bank_margin_analysis
+        schema: ${ATHENA_SCHEMA}
+        description: Latest listed rates with estimated bank gross margins over a stylized Swedish mortgage funding stack.
+      - table_name: bank_vs_market_analysis
+        schema: ${ATHENA_SCHEMA}
+        description: Listed bank rates compared with SCB market averages and the same stylized funding-cost model.

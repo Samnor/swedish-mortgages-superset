@@ -1,0 +1,122 @@
+name: Deploy Superset
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+
+concurrency:
+  group: superset-${{ inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      branch: ${{ steps.env.outputs.branch }}
+    steps:
+      - id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DEPLOY_ENV="${{ inputs.environment }}"
+          elif [ "${{ github.ref_name }}" = "main" ]; then
+            DEPLOY_ENV="prod"
+          else
+            DEPLOY_ENV="dev"
+          fi
+          echo "environment=$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
+          echo "branch=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: resolve
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve.outputs.environment }}
+    env:
+      DEPLOY_BRANCH: ${{ needs.resolve.outputs.branch }}
+      DEPLOY_PATH: ${{ vars.SUPERSET_DEPLOY_PATH }}
+      SUPERSET_PORT: ${{ vars.SUPERSET_PORT || '8088' }}
+      SUPERSET_DATABASE_NAME: ${{ vars.SUPERSET_DATABASE_NAME || 'Athena Swedish Mortgages' }}
+      SUPERSET_ADMIN_USERNAME: ${{ vars.SUPERSET_ADMIN_USERNAME || 'admin' }}
+      SUPERSET_ADMIN_FIRSTNAME: ${{ vars.SUPERSET_ADMIN_FIRSTNAME || 'Superset' }}
+      SUPERSET_ADMIN_LASTNAME: ${{ vars.SUPERSET_ADMIN_LASTNAME || 'Admin' }}
+      SUPERSET_ADMIN_EMAIL: ${{ vars.SUPERSET_ADMIN_EMAIL || 'admin@example.com' }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION || 'eu-north-1' }}
+      ATHENA_REGION: ${{ vars.ATHENA_REGION || 'eu-north-1' }}
+      ATHENA_DATABASE: ${{ vars.ATHENA_DATABASE || 'awsdatacatalog' }}
+      ATHENA_SCHEMA: ${{ vars.ATHENA_SCHEMA }}
+      ATHENA_WORK_GROUP: ${{ vars.ATHENA_WORK_GROUP || 'primary' }}
+      ATHENA_S3_STAGING_DIR: ${{ vars.ATHENA_S3_STAGING_DIR }}
+      TAILSCALE_BASE_URL: ${{ vars.TAILSCALE_BASE_URL }}
+      SUPERSET_SECRET_KEY: ${{ secrets.SUPERSET_SECRET_KEY }}
+      SUPERSET_ADMIN_PASSWORD: ${{ secrets.SUPERSET_ADMIN_PASSWORD }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required environment
+        run: |
+          test -n "$DEPLOY_PATH"
+          test -n "$ATHENA_SCHEMA"
+          test -n "$ATHENA_S3_STAGING_DIR"
+          test -n "$SUPERSET_SECRET_KEY"
+          test -n "$SUPERSET_ADMIN_PASSWORD"
+          test -n "$AWS_ACCESS_KEY_ID"
+          test -n "$AWS_SECRET_ACCESS_KEY"
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SUPERSET_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ vars.SUPERSET_DEPLOY_HOST }}
+          SSH_PORT: ${{ vars.SUPERSET_DEPLOY_PORT || '22' }}
+        run: |
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_HOST"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy on remote host
+        env:
+          SSH_USER: ${{ vars.SUPERSET_DEPLOY_USER }}
+          SSH_HOST: ${{ vars.SUPERSET_DEPLOY_HOST }}
+          SSH_PORT: ${{ vars.SUPERSET_DEPLOY_PORT || '22' }}
+        run: |
+          test -n "$SSH_USER"
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            DEPLOY_PATH="$DEPLOY_PATH" \
+            DEPLOY_BRANCH="$DEPLOY_BRANCH" \
+            SUPERSET_PORT="$SUPERSET_PORT" \
+            SUPERSET_SECRET_KEY="$SUPERSET_SECRET_KEY" \
+            SUPERSET_ADMIN_USERNAME="$SUPERSET_ADMIN_USERNAME" \
+            SUPERSET_ADMIN_FIRSTNAME="$SUPERSET_ADMIN_FIRSTNAME" \
+            SUPERSET_ADMIN_LASTNAME="$SUPERSET_ADMIN_LASTNAME" \
+            SUPERSET_ADMIN_EMAIL="$SUPERSET_ADMIN_EMAIL" \
+            SUPERSET_ADMIN_PASSWORD="$SUPERSET_ADMIN_PASSWORD" \
+            AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+            AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+            AWS_SESSION_TOKEN="$AWS_SESSION_TOKEN" \
+            AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION" \
+            ATHENA_REGION="$ATHENA_REGION" \
+            ATHENA_DATABASE="$ATHENA_DATABASE" \
+            ATHENA_SCHEMA="$ATHENA_SCHEMA" \
+            ATHENA_WORK_GROUP="$ATHENA_WORK_GROUP" \
+            ATHENA_S3_STAGING_DIR="$ATHENA_S3_STAGING_DIR" \
+            SUPERSET_DATABASE_NAME="$SUPERSET_DATABASE_NAME" \
+            TAILSCALE_BASE_URL="$TAILSCALE_BASE_URL" \
+            bash -s < scripts/deploy_remote.sh
