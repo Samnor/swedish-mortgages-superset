@@ -1,8 +1,9 @@
 data "aws_caller_identity" "current" {}
 
 locals {
-  name    = "${var.name_prefix}-${var.environment}-superset"
-  db_name = "superset_${var.environment}"
+  name               = "${var.name_prefix}-${var.environment}-superset"
+  db_name            = "superset_${var.environment}"
+  tailscale_hostname = var.tailscale_hostname == "" ? local.name : var.tailscale_hostname
   common_tags = {
     Project     = "swedish-mortgages"
     Environment = var.environment
@@ -154,7 +155,7 @@ resource "aws_secretsmanager_secret_version" "database_uri" {
 
 resource "aws_lb" "superset" {
   name               = substr(replace(local.name, "-", ""), 0, 32)
-  internal           = false
+  internal           = var.internal_alb
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
@@ -357,6 +358,97 @@ resource "aws_ecs_service" "superset" {
 
   depends_on = [aws_lb_listener.superset]
   tags       = local.common_tags
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+}
+
+resource "aws_security_group" "tailscale_proxy" {
+  count       = var.tailscale_proxy_enabled ? 1 : 0
+  name        = "${local.name}-tailscale-proxy"
+  description = "Tailscale proxy for private Superset dev access"
+  vpc_id      = var.vpc_id
+  tags        = local.common_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "tailscale_proxy_all" {
+  count             = var.tailscale_proxy_enabled ? 1 : 0
+  security_group_id = aws_security_group.tailscale_proxy[0].id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_from_tailscale_proxy" {
+  count                        = var.tailscale_proxy_enabled ? 1 : 0
+  security_group_id            = aws_security_group.alb.id
+  referenced_security_group_id = aws_security_group.tailscale_proxy[0].id
+  from_port                    = var.certificate_arn == "" ? 80 : 443
+  ip_protocol                  = "tcp"
+  to_port                      = var.certificate_arn == "" ? 80 : 443
+}
+
+resource "aws_iam_role" "tailscale_proxy" {
+  count = var.tailscale_proxy_enabled ? 1 : 0
+  name  = "${local.name}-tailscale-proxy"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = "sts:AssumeRole"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+  tags = local.common_tags
+}
+
+resource "aws_iam_instance_profile" "tailscale_proxy" {
+  count = var.tailscale_proxy_enabled ? 1 : 0
+  name  = "${local.name}-tailscale-proxy"
+  role  = aws_iam_role.tailscale_proxy[0].name
+}
+
+data "aws_ami" "amazon_linux" {
+  count       = var.tailscale_proxy_enabled ? 1 : 0
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-arm64"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
+  }
+}
+
+resource "aws_instance" "tailscale_proxy" {
+  count                       = var.tailscale_proxy_enabled ? 1 : 0
+  ami                         = data.aws_ami.amazon_linux[0].id
+  instance_type               = "t4g.nano"
+  subnet_id                   = var.public_subnet_ids[0]
+  vpc_security_group_ids      = [aws_security_group.tailscale_proxy[0].id]
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.tailscale_proxy[0].name
+
+  user_data = templatefile("${path.module}/tailscale-proxy-user-data.sh.tftpl", {
+    tailscale_auth_key = var.tailscale_auth_key
+    tailscale_hostname = local.tailscale_hostname
+    alb_dns_name       = aws_lb.superset.dns_name
+    listener_port      = var.certificate_arn == "" ? 80 : 443
+  })
+
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name}-tailscale-proxy"
+  })
 }
 
 data "aws_iam_openid_connect_provider" "github" {

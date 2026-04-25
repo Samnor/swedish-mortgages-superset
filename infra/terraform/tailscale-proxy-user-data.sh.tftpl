@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dnf install -y dnf-plugins-core
+dnf config-manager --add-repo https://pkgs.tailscale.com/stable/amazon-linux/2023/tailscale.repo
+dnf install -y tailscale haproxy
+
+cat >/etc/haproxy/haproxy.cfg <<CFG
+global
+  log stdout format raw local0
+  maxconn 256
+
+defaults
+  log global
+  mode http
+  timeout connect 10s
+  timeout client 60s
+  timeout server 60s
+
+frontend superset
+  bind 0.0.0.0:8088
+  default_backend superset_alb
+
+backend superset_alb
+  server alb ${alb_dns_name}:${listener_port} check
+CFG
+
+systemctl enable --now haproxy
+systemctl enable --now tailscaled
+tailscale up --auth-key '${tailscale_auth_key}' --hostname '${tailscale_hostname}' --ssh=false

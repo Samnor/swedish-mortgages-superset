@@ -45,3 +45,11 @@ output "superset_admin_password_secret_arn" {
 output "superset_database_uri_secret_arn" {
   value = aws_secretsmanager_secret.database_uri.arn
 }
+
+output "tailscale_proxy_public_ip" {
+  value = var.tailscale_proxy_enabled ? aws_instance.tailscale_proxy[0].public_ip : null
+}
+
+output "tailscale_hostname" {
+  value = var.tailscale_proxy_enabled ? local.tailscale_hostname : null
+}

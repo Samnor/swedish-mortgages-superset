@@ -38,9 +38,30 @@ variable "assign_public_ip" {
   default = true
 }
 
+variable "internal_alb" {
+  type    = bool
+  default = false
+}
+
 variable "allowed_ingress_cidrs" {
   type    = list(string)
   default = ["0.0.0.0/0"]
+}
+
+variable "tailscale_proxy_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "tailscale_auth_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "tailscale_hostname" {
+  type    = string
+  default = ""
 }
 
 variable "certificate_arn" {
