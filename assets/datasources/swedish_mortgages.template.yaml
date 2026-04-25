@@ -1,5 +1,6 @@
 databases:
   - database_name: ${SUPERSET_DATABASE_NAME}
+    sqlalchemy_uri: ${ATHENA_SQLALCHEMY_URI}
     tables:
       - table_name: rates_daily
         schema: ${ATHENA_SCHEMA}
