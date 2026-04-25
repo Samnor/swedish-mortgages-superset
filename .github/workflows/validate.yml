@@ -23,10 +23,35 @@ jobs:
           python-version: "3.11"
 
       - name: Compile Python scripts
-        run: python -m py_compile assets/custom/create_mortgage_dashboard.py custom_pythonpath/superset_config.py scripts/render_datasources.py
+        run: python -m py_compile assets/custom/create_mortgage_dashboard.py custom_pythonpath/superset_config.py scripts/render_datasources.py scripts/render_task_definition.py
 
       - name: Render datasource metadata
         run: python scripts/render_datasources.py
 
       - name: Validate rendered datasource
         run: test -s assets/datasources/swedish_mortgages.yaml
+
+      - name: Render ECS task definition template
+        env:
+          ECS_TASK_FAMILY: swedish-mortgages-dev-superset
+          ECS_EXECUTION_ROLE_ARN: arn:aws:iam::123456789012:role/example-execution
+          ECS_TASK_ROLE_ARN: arn:aws:iam::123456789012:role/example-task
+          IMAGE_URI: 123456789012.dkr.ecr.eu-north-1.amazonaws.com/swedish-mortgages-superset:test
+          ECS_LOG_GROUP: /ecs/swedish-mortgages-dev-superset
+          AWS_REGION: eu-north-1
+          SUPERSET_PORT: "8088"
+          SUPERSET_DATABASE_NAME: Athena Swedish Mortgages
+          SUPERSET_ADMIN_USERNAME: admin
+          SUPERSET_ADMIN_FIRSTNAME: Superset
+          SUPERSET_ADMIN_LASTNAME: Admin
+          SUPERSET_ADMIN_EMAIL: admin@example.com
+          ATHENA_REGION: eu-north-1
+          ATHENA_DATABASE: awsdatacatalog
+          ATHENA_SCHEMA: swedish_mortgages_dev_marts
+          ATHENA_WORK_GROUP: primary
+          ATHENA_S3_STAGING_DIR: s3://example/athena-results/
+          TAILSCALE_BASE_URL: ""
+          SUPERSET_SECRET_KEY_SECRET_ARN: arn:aws:secretsmanager:eu-north-1:123456789012:secret:example-secret-key
+          SUPERSET_ADMIN_PASSWORD_SECRET_ARN: arn:aws:secretsmanager:eu-north-1:123456789012:secret:example-admin-password
+          SUPERSET_DATABASE_URI_SECRET_ARN: arn:aws:secretsmanager:eu-north-1:123456789012:secret:example-database-uri
+        run: python scripts/render_task_definition.py aws/ecs-task-definition.template.json target/ecs-task-definition.json

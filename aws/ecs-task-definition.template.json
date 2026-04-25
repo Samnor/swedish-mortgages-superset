@@ -1,0 +1,52 @@
+{
+  "family": "${ECS_TASK_FAMILY}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${ECS_TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "superset",
+      "image": "${IMAGE_URI}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8088,
+          "hostPort": 8088,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {"name": "SUPERSET_CONFIG_PATH", "value": "/app/pythonpath/superset_config.py"},
+        {"name": "SUPERSET_PORT", "value": "${SUPERSET_PORT}"},
+        {"name": "SUPERSET_DATABASE_NAME", "value": "${SUPERSET_DATABASE_NAME}"},
+        {"name": "SUPERSET_ADMIN_USERNAME", "value": "${SUPERSET_ADMIN_USERNAME}"},
+        {"name": "SUPERSET_ADMIN_FIRSTNAME", "value": "${SUPERSET_ADMIN_FIRSTNAME}"},
+        {"name": "SUPERSET_ADMIN_LASTNAME", "value": "${SUPERSET_ADMIN_LASTNAME}"},
+        {"name": "SUPERSET_ADMIN_EMAIL", "value": "${SUPERSET_ADMIN_EMAIL}"},
+        {"name": "AWS_DEFAULT_REGION", "value": "${AWS_REGION}"},
+        {"name": "ATHENA_REGION", "value": "${ATHENA_REGION}"},
+        {"name": "ATHENA_DATABASE", "value": "${ATHENA_DATABASE}"},
+        {"name": "ATHENA_SCHEMA", "value": "${ATHENA_SCHEMA}"},
+        {"name": "ATHENA_WORK_GROUP", "value": "${ATHENA_WORK_GROUP}"},
+        {"name": "ATHENA_S3_STAGING_DIR", "value": "${ATHENA_S3_STAGING_DIR}"},
+        {"name": "TAILSCALE_BASE_URL", "value": "${TAILSCALE_BASE_URL}"}
+      ],
+      "secrets": [
+        {"name": "SUPERSET_SECRET_KEY", "valueFrom": "${SUPERSET_SECRET_KEY_SECRET_ARN}"},
+        {"name": "SUPERSET_ADMIN_PASSWORD", "valueFrom": "${SUPERSET_ADMIN_PASSWORD_SECRET_ARN}"},
+        {"name": "SUPERSET_DATABASE_URI", "valueFrom": "${SUPERSET_DATABASE_URI_SECRET_ARN}"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-group": "${ECS_LOG_GROUP}",
+          "awslogs-stream-prefix": "superset"
+        }
+      }
+    }
+  ]
+}

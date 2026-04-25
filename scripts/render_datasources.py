@@ -9,8 +9,9 @@ from string import Template
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE = ROOT / "assets" / "datasources" / "swedish_mortgages.template.yaml"
-OUTPUT = ROOT / "assets" / "datasources" / "swedish_mortgages.yaml"
+ASSETS_ROOT = Path(os.environ.get("CODEX_ASSETS_DIR", ROOT / "assets"))
+TEMPLATE = ASSETS_ROOT / "datasources" / "swedish_mortgages.template.yaml"
+OUTPUT = ASSETS_ROOT / "datasources" / "swedish_mortgages.yaml"
 
 
 def load_dotenv() -> None:
@@ -36,7 +37,7 @@ def main() -> int:
     }
     rendered = Template(TEMPLATE.read_text()).substitute(values)
     OUTPUT.write_text(rendered)
-    print(f"Rendered {OUTPUT.relative_to(ROOT)} for schema {values['ATHENA_SCHEMA']}")
+    print(f"Rendered {OUTPUT} for schema {values['ATHENA_SCHEMA']}")
     return 0
 
 
