@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from string import Template
+from urllib.parse import quote_plus
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,11 +30,22 @@ def load_dotenv() -> None:
 
 def main() -> int:
     load_dotenv()
+    athena_region = os.environ.get("ATHENA_REGION", "eu-north-1")
+    athena_database = os.environ.get("ATHENA_DATABASE", "awsdatacatalog")
+    athena_work_group = os.environ.get("ATHENA_WORK_GROUP", "primary")
+    athena_staging_dir = os.environ.get("ATHENA_S3_STAGING_DIR", "")
+    athena_uri = os.environ.get("ATHENA_SQLALCHEMY_URI") or (
+        "awsathena+rest://@"
+        f"athena.{athena_region}.amazonaws.com/{athena_database}"
+        f"?work_group={quote_plus(athena_work_group)}"
+        f"&s3_staging_dir={quote_plus(athena_staging_dir)}"
+    )
     values = {
         "SUPERSET_DATABASE_NAME": os.environ.get(
             "SUPERSET_DATABASE_NAME", "Athena Swedish Mortgages"
         ),
         "ATHENA_SCHEMA": os.environ.get("ATHENA_SCHEMA", "swedish_mortgages_dev_marts"),
+        "ATHENA_SQLALCHEMY_URI": athena_uri,
     }
     rendered = Template(TEMPLATE.read_text()).substitute(values)
     OUTPUT.write_text(rendered)
