@@ -410,6 +410,23 @@ resource "aws_iam_instance_profile" "tailscale_proxy" {
   role  = aws_iam_role.tailscale_proxy[0].name
 }
 
+resource "aws_iam_role_policy" "tailscale_proxy_ssm" {
+  count = var.tailscale_proxy_enabled && var.tailscale_auth_key_ssm_parameter_name != "" ? 1 : 0
+  name  = "${local.name}-tailscale-proxy-ssm"
+  role  = aws_iam_role.tailscale_proxy[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ssm:GetParameter"
+      ]
+      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.tailscale_auth_key_ssm_parameter_name}"
+    }]
+  })
+}
+
 data "aws_ami" "amazon_linux" {
   count       = var.tailscale_proxy_enabled ? 1 : 0
   most_recent = true
@@ -436,10 +453,11 @@ resource "aws_instance" "tailscale_proxy" {
   iam_instance_profile        = aws_iam_instance_profile.tailscale_proxy[0].name
 
   user_data = templatefile("${path.module}/tailscale-proxy-user-data.sh.tftpl", {
-    tailscale_auth_key = var.tailscale_auth_key
-    tailscale_hostname = local.tailscale_hostname
-    alb_dns_name       = aws_lb.superset.dns_name
-    listener_port      = var.certificate_arn == "" ? 80 : 443
+    tailscale_auth_key                    = var.tailscale_auth_key
+    tailscale_auth_key_ssm_parameter_name = var.tailscale_auth_key_ssm_parameter_name
+    tailscale_hostname                    = local.tailscale_hostname
+    alb_dns_name                          = aws_lb.superset.dns_name
+    listener_port                         = var.certificate_arn == "" ? 80 : 443
   })
 
   metadata_options {
@@ -449,6 +467,10 @@ resource "aws_instance" "tailscale_proxy" {
   tags = merge(local.common_tags, {
     Name = "${local.name}-tailscale-proxy"
   })
+
+  lifecycle {
+    ignore_changes = [user_data]
+  }
 }
 
 data "aws_iam_openid_connect_provider" "github" {

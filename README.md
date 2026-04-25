@@ -91,6 +91,24 @@ running the import.
 - If you later put it behind a reverse proxy, `superset_config.py` already
   enables proxy header handling.
 
+## Dev Tailscale proxy auth key
+
+For AWS dev, store the temporary Tailscale auth key in SSM Parameter Store
+instead of putting it directly in Terraform variables:
+
+```bash
+aws ssm put-parameter \
+  --region eu-north-1 \
+  --name /swedish-mortgages/dev/tailscale/auth-key \
+  --type SecureString \
+  --value '<temporary-tskey-auth-value>' \
+  --overwrite
+```
+
+Set `tailscale_auth_key_ssm_parameter_name` in `dev.tfvars`. The EC2 proxy
+reads the key once at first boot, and Terraform ignores later `user_data`
+changes so revoking or rotating the key does not replace the proxy.
+
 ## Next steps
 
 - Add richer charts beyond the starter dashboard for rate history, bank

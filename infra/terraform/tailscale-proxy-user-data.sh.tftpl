@@ -3,7 +3,7 @@ set -euo pipefail
 
 dnf install -y dnf-plugins-core
 dnf config-manager --add-repo https://pkgs.tailscale.com/stable/amazon-linux/2023/tailscale.repo
-dnf install -y tailscale haproxy
+dnf install -y awscli tailscale haproxy
 
 cat >/etc/haproxy/haproxy.cfg <<CFG
 global
@@ -27,4 +27,15 @@ CFG
 
 systemctl enable --now haproxy
 systemctl enable --now tailscaled
-tailscale up --auth-key '${tailscale_auth_key}' --hostname '${tailscale_hostname}' --ssh=false
+
+TAILSCALE_AUTH_KEY='${tailscale_auth_key}'
+if [[ -n '${tailscale_auth_key_ssm_parameter_name}' ]]; then
+  TAILSCALE_AUTH_KEY="$(aws ssm get-parameter --name '${tailscale_auth_key_ssm_parameter_name}' --with-decryption --query Parameter.Value --output text)"
+fi
+
+if [[ -z "$TAILSCALE_AUTH_KEY" ]]; then
+  echo "No Tailscale auth key configured; skipping tailscale up" >&2
+  exit 0
+fi
+
+tailscale up --auth-key "$TAILSCALE_AUTH_KEY" --hostname '${tailscale_hostname}' --ssh=false

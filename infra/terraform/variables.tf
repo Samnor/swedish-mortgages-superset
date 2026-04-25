@@ -59,6 +59,12 @@ variable "tailscale_auth_key" {
   default   = ""
 }
 
+variable "tailscale_auth_key_ssm_parameter_name" {
+  type        = string
+  default     = ""
+  description = "Optional SecureString SSM parameter name containing the Tailscale auth key. Preferred over tailscale_auth_key because the key is fetched by EC2 at first boot instead of embedded in Terraform state user_data."
+}
+
 variable "tailscale_hostname" {
   type    = string
   default = ""
