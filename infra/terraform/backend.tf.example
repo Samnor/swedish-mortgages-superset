@@ -1,0 +1,9 @@
+terraform {
+  backend "s3" {
+    bucket         = "swedish-mortgages-terraform-state-642948445774"
+    key            = "superset/dev/terraform.tfstate"
+    region         = "eu-north-1"
+    dynamodb_table = "swedish-mortgages-terraform-locks"
+    encrypt        = true
+  }
+}
