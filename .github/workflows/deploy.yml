@@ -68,17 +68,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate required environment
+      - name: Check deployment configuration
+        id: preflight
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SUPERSET_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ vars.SUPERSET_DEPLOY_HOST }}
+          SSH_USER: ${{ vars.SUPERSET_DEPLOY_USER }}
         run: |
-          test -n "$DEPLOY_PATH"
-          test -n "$ATHENA_SCHEMA"
-          test -n "$ATHENA_S3_STAGING_DIR"
-          test -n "$SUPERSET_SECRET_KEY"
-          test -n "$SUPERSET_ADMIN_PASSWORD"
-          test -n "$AWS_ACCESS_KEY_ID"
-          test -n "$AWS_SECRET_ACCESS_KEY"
+          missing=0
+          for name in DEPLOY_PATH ATHENA_SCHEMA ATHENA_S3_STAGING_DIR SUPERSET_SECRET_KEY SUPERSET_ADMIN_PASSWORD AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY SSH_PRIVATE_KEY SSH_HOST SSH_USER; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing $name; deployment will be skipped."
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_ready=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Configure SSH
+        if: steps.preflight.outputs.deploy_ready == 'true'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SUPERSET_DEPLOY_SSH_KEY }}
           SSH_HOST: ${{ vars.SUPERSET_DEPLOY_HOST }}
@@ -92,6 +103,7 @@ jobs:
           ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy on remote host
+        if: steps.preflight.outputs.deploy_ready == 'true'
         env:
           SSH_USER: ${{ vars.SUPERSET_DEPLOY_USER }}
           SSH_HOST: ${{ vars.SUPERSET_DEPLOY_HOST }}
