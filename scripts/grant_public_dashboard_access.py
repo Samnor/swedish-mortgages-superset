@@ -12,6 +12,14 @@ DASHBOARD_SLUG = os.environ.get(
 DASHBOARD_TITLE = "Swedish Mortgages Overview"
 CHART_NAME = "Mortgage Market Rates Snapshot"
 
+RATES_DAILY_COLUMNS = {
+    "rate_date": ("DATE", True),
+    "policy_rate": ("DECIMAL(10, 4)", False),
+    "govbond_5y": ("DECIMAL(10, 4)", False),
+    "mortbond_5y": ("DECIMAL(10, 4)", False),
+    "spread_5y": ("DECIMAL(12, 4)", False),
+}
+
 SAFE_BASE_PERMISSIONS = {
     ("can_dashboard", "Superset"),
     ("can_dashboard_permalink", "Superset"),
@@ -117,9 +125,9 @@ def _chart_params(dataset) -> str:
             "columns": [
                 "rate_date",
                 "policy_rate",
-                "government_bond_5y",
-                "covered_bond_5y",
-                "covered_bond_spread_5y",
+                "govbond_5y",
+                "mortbond_5y",
+                "spread_5y",
             ],
             "adhoc_filters": [],
             "row_limit": 100,
@@ -134,6 +142,32 @@ def _chart_params(dataset) -> str:
     )
 
 
+def _sync_rates_daily_columns(dataset) -> None:
+    from superset.connectors.sqla.models import TableColumn
+
+    existing = {column.column_name: column for column in dataset.columns}
+    for column_name, (column_type, is_dttm) in RATES_DAILY_COLUMNS.items():
+        column = existing.get(column_name)
+        if column is None:
+            column = TableColumn(
+                table=dataset,
+                column_name=column_name,
+                type=column_type,
+                is_dttm=is_dttm,
+                groupby=True,
+                filterable=True,
+                verbose_name=column_name,
+                uuid=uuid.uuid4(),
+            )
+            db.session.add(column)
+        else:
+            column.type = column_type
+            column.is_dttm = is_dttm
+            column.groupby = True
+            column.filterable = True
+            column.verbose_name = column_name
+
+
 def _ensure_public_dashboard():
     from superset.connectors.sqla.models import SqlaTable
     from superset.models.dashboard import Dashboard
@@ -146,6 +180,7 @@ def _ensure_public_dashboard():
     )
     if dataset is None:
         raise RuntimeError("Expected rates_daily dataset was not found")
+    _sync_rates_daily_columns(dataset)
 
     chart = (
         db.session.query(Slice)
