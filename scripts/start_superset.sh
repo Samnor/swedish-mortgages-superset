@@ -17,6 +17,7 @@ superset fab create-admin \
   --password "${SUPERSET_ADMIN_PASSWORD}" 2>/dev/null || true
 superset init
 superset import_datasources -p /app/codex_assets/datasources/swedish_mortgages.yaml -u "${SUPERSET_ADMIN_USERNAME}" || true
+python /app/codex_scripts/grant_public_dashboard_access.py || true
 if [ "${BOOTSTRAP_SQLITE_DASHBOARD:-false}" = "true" ]; then
   python /app/codex_assets/custom/create_mortgage_dashboard.py || true
 fi
