@@ -2,7 +2,8 @@ import os
 import json
 import uuid
 
-from superset import app, db, security_manager
+from superset import db, security_manager
+from superset.app import create_app
 
 
 DASHBOARD_SLUG = os.environ.get(
@@ -203,6 +204,7 @@ def _ensure_public_dashboard():
 
 
 def main() -> None:
+    app = create_app()
     with app.app_context():
         from superset.models.dashboard import Dashboard
 
