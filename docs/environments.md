@@ -56,6 +56,9 @@ Terraform-only changes do not rebuild or redeploy Superset automatically.
 Use the manual `workflow_dispatch` deployment when an infrastructure-only change
 requires the ECS task definition or running service to refresh.
 
+Production deployments use the `prod` GitHub Environment and should require
+manual approval before the deploy job receives production credentials.
+
 ## GitHub Environment Variables
 
 Set these variables on both GitHub Environments, using the matching Terraform
