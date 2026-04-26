@@ -2,6 +2,10 @@ output "alb_dns_name" {
   value = aws_lb.superset.dns_name
 }
 
+output "superset_url" {
+  value = var.domain_name == "" ? null : "https://${var.domain_name}"
+}
+
 output "ecr_repository" {
   value = aws_ecr_repository.superset.name
 }

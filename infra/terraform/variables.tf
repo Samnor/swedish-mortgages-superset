@@ -81,6 +81,18 @@ variable "certificate_arn" {
   default = ""
 }
 
+variable "route53_zone_id" {
+  type        = string
+  default     = ""
+  description = "Optional Route53 hosted zone ID for creating the Superset DNS record."
+}
+
+variable "domain_name" {
+  type        = string
+  default     = ""
+  description = "Optional public hostname for Superset, for example superset.example.com."
+}
+
 variable "container_image" {
   type    = string
   default = "public.ecr.aws/docker/library/busybox:latest"

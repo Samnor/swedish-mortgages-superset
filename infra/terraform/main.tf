@@ -180,6 +180,19 @@ resource "aws_lb_listener" "superset" {
   }
 }
 
+resource "aws_route53_record" "superset" {
+  count   = var.route53_zone_id != "" && var.domain_name != "" ? 1 : 0
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.superset.dns_name
+    zone_id                = aws_lb.superset.zone_id
+    evaluate_target_health = true
+  }
+}
+
 resource "aws_ecs_cluster" "superset" {
   name = "${local.name}-cluster"
   tags = local.common_tags

@@ -25,6 +25,10 @@ Each environment has separate:
 - ECS task role
 - GitHub Actions OIDC deploy role
 
+Production additionally uses an HTTPS listener with an ACM certificate and a
+Route53 alias record for `superset.salaguno.com`. Development remains behind an
+internal ALB and Tailscale access.
+
 The ECR repository is shared and images are tagged with:
 
 ```text
