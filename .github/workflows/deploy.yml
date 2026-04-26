@@ -5,6 +5,17 @@ on:
     branches:
       - main
       - develop
+    paths:
+      - "Dockerfile"
+      - "aws/**"
+      - "assets/**"
+      - "custom_pythonpath/**"
+      - "scripts/**"
+      - "requirements*.txt"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
       environment:

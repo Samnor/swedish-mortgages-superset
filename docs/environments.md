@@ -47,6 +47,15 @@ Runtime secrets live in AWS Secrets Manager:
 GitHub should not store Superset admin passwords, database URLs, or AWS access
 keys. GitHub Actions assumes an AWS role through OIDC.
 
+## Deployment Triggers
+
+The deployment workflow only runs automatically when application, container,
+runtime script, or deploy workflow files change. Documentation-only and
+Terraform-only changes do not rebuild or redeploy Superset automatically.
+
+Use the manual `workflow_dispatch` deployment when an infrastructure-only change
+requires the ECS task definition or running service to refresh.
+
 ## GitHub Environment Variables
 
 Set these variables on both GitHub Environments, using the matching Terraform
