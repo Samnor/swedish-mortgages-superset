@@ -70,6 +70,12 @@ variable "tailscale_hostname" {
   default = ""
 }
 
+variable "tailscale_proxy_subnet_id" {
+  type        = string
+  default     = ""
+  description = "Optional explicit subnet for the Tailscale proxy. Defaults to the first public subnet."
+}
+
 variable "certificate_arn" {
   type    = string
   default = ""
@@ -80,24 +86,22 @@ variable "container_image" {
   default = "public.ecr.aws/docker/library/busybox:latest"
 }
 
-variable "superset_secret_key" {
-  type      = string
-  sensitive = true
-}
-
-variable "superset_admin_password" {
-  type      = string
-  sensitive = true
-}
-
 variable "db_username" {
   type    = string
   default = "superset"
 }
 
+variable "manage_db_master_password" {
+  type        = bool
+  default     = true
+  description = "Use RDS-managed master password storage instead of putting the DB password in Terraform state."
+}
+
 variable "db_password" {
   type      = string
   sensitive = true
+  default   = null
+  nullable  = true
 }
 
 variable "db_instance_class" {

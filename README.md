@@ -109,6 +109,29 @@ Set `tailscale_auth_key_ssm_parameter_name` in `dev.tfvars`. The EC2 proxy
 reads the key once at first boot, and Terraform ignores later `user_data`
 changes so revoking or rotating the key does not replace the proxy.
 
+## AWS Superset secrets
+
+Terraform creates the Secrets Manager containers, but live Superset values are
+written outside Terraform state:
+
+```bash
+export ENVIRONMENT=dev
+export AWS_REGION=eu-north-1
+export SUPERSET_SECRET_KEY='<random-secret-key>'
+export SUPERSET_ADMIN_PASSWORD='<admin-password>'
+
+scripts/put_superset_secrets.sh
+```
+
+The script reads the RDS host/name/username from Terraform outputs and, when
+`manage_db_master_password=true`, reads the RDS-managed password from AWS
+Secrets Manager. If you disable RDS-managed passwords, set `DB_PASSWORD`
+explicitly before running it. It writes:
+
+- `/swedish-mortgages/dev/superset/secret-key`
+- `/swedish-mortgages/dev/superset/admin-password`
+- `/swedish-mortgages/dev/superset/database-uri`
+
 ## Next steps
 
 - Add richer charts beyond the starter dashboard for rate history, bank

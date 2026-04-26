@@ -46,6 +46,22 @@ output "superset_database_uri_secret_arn" {
   value = aws_secretsmanager_secret.database_uri.arn
 }
 
+output "db_address" {
+  value = aws_db_instance.superset.address
+}
+
+output "db_name" {
+  value = local.db_name
+}
+
+output "db_username" {
+  value = var.db_username
+}
+
+output "db_master_user_secret_arn" {
+  value = try(aws_db_instance.superset.master_user_secret[0].secret_arn, null)
+}
+
 output "tailscale_proxy_public_ip" {
   value = var.tailscale_proxy_enabled ? aws_instance.tailscale_proxy[0].public_ip : null
 }

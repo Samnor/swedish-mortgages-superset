@@ -100,21 +100,29 @@ resource "aws_db_subnet_group" "superset" {
 }
 
 resource "aws_db_instance" "superset" {
-  identifier             = local.name
-  engine                 = "postgres"
-  engine_version         = "16"
-  instance_class         = var.db_instance_class
-  allocated_storage      = var.db_allocated_storage
-  db_name                = local.db_name
-  username               = var.db_username
-  password               = var.db_password
-  db_subnet_group_name   = aws_db_subnet_group.superset.name
-  vpc_security_group_ids = [aws_security_group.db.id]
-  publicly_accessible    = false
-  skip_final_snapshot    = var.environment == "dev"
-  deletion_protection    = var.environment == "prod"
-  storage_encrypted      = true
-  tags                   = local.common_tags
+  identifier                  = local.name
+  engine                      = "postgres"
+  engine_version              = "16"
+  instance_class              = var.db_instance_class
+  allocated_storage           = var.db_allocated_storage
+  db_name                     = local.db_name
+  username                    = var.db_username
+  password                    = var.manage_db_master_password ? null : var.db_password
+  manage_master_user_password = var.manage_db_master_password
+  db_subnet_group_name        = aws_db_subnet_group.superset.name
+  vpc_security_group_ids      = [aws_security_group.db.id]
+  publicly_accessible         = false
+  skip_final_snapshot         = var.environment == "dev"
+  deletion_protection         = var.environment == "prod"
+  storage_encrypted           = true
+  tags                        = local.common_tags
+
+  lifecycle {
+    precondition {
+      condition     = var.manage_db_master_password || var.db_password != null
+      error_message = "db_password must be set when manage_db_master_password is false."
+    }
+  }
 }
 
 resource "aws_secretsmanager_secret" "secret_key" {
@@ -122,35 +130,14 @@ resource "aws_secretsmanager_secret" "secret_key" {
   tags = local.common_tags
 }
 
-resource "aws_secretsmanager_secret_version" "secret_key" {
-  secret_id     = aws_secretsmanager_secret.secret_key.id
-  secret_string = var.superset_secret_key
-}
-
 resource "aws_secretsmanager_secret" "admin_password" {
   name = "/swedish-mortgages/${var.environment}/superset/admin-password"
   tags = local.common_tags
 }
 
-resource "aws_secretsmanager_secret_version" "admin_password" {
-  secret_id     = aws_secretsmanager_secret.admin_password.id
-  secret_string = var.superset_admin_password
-}
-
 resource "aws_secretsmanager_secret" "database_uri" {
   name = "/swedish-mortgages/${var.environment}/superset/database-uri"
   tags = local.common_tags
-}
-
-resource "aws_secretsmanager_secret_version" "database_uri" {
-  secret_id = aws_secretsmanager_secret.database_uri.id
-  secret_string = format(
-    "postgresql+psycopg2://%s:%s@%s:5432/%s",
-    var.db_username,
-    var.db_password,
-    aws_db_instance.superset.address,
-    local.db_name
-  )
 }
 
 resource "aws_lb" "superset" {
@@ -447,7 +434,7 @@ resource "aws_instance" "tailscale_proxy" {
   count                       = var.tailscale_proxy_enabled ? 1 : 0
   ami                         = data.aws_ami.amazon_linux[0].id
   instance_type               = "t4g.nano"
-  subnet_id                   = var.public_subnet_ids[0]
+  subnet_id                   = var.tailscale_proxy_subnet_id == "" ? var.public_subnet_ids[0] : var.tailscale_proxy_subnet_id
   vpc_security_group_ids      = [aws_security_group.tailscale_proxy[0].id]
   associate_public_ip_address = true
   iam_instance_profile        = aws_iam_instance_profile.tailscale_proxy[0].name
