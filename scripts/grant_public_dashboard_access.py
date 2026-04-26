@@ -3,9 +3,6 @@ import json
 import uuid
 
 from superset import app, db, security_manager
-from superset.connectors.sqla.models import SqlaTable
-from superset.models.dashboard import Dashboard
-from superset.models.slice import Slice
 
 
 DASHBOARD_SLUG = os.environ.get(
@@ -55,7 +52,7 @@ def _permission_pair(permission_view) -> tuple[str, str]:
     )
 
 
-def _dashboard_layout(chart: Slice) -> str:
+def _dashboard_layout(chart) -> str:
     return json.dumps(
         {
             "ROOT_ID": {"type": "ROOT", "id": "ROOT_ID", "children": ["GRID_ID"]},
@@ -110,7 +107,7 @@ def _dashboard_layout(chart: Slice) -> str:
     )
 
 
-def _chart_params(dataset: SqlaTable) -> str:
+def _chart_params(dataset) -> str:
     return json.dumps(
         {
             "datasource": f"{dataset.id}__table",
@@ -136,7 +133,11 @@ def _chart_params(dataset: SqlaTable) -> str:
     )
 
 
-def _ensure_public_dashboard() -> Dashboard:
+def _ensure_public_dashboard():
+    from superset.connectors.sqla.models import SqlaTable
+    from superset.models.dashboard import Dashboard
+    from superset.models.slice import Slice
+
     dataset = (
         db.session.query(SqlaTable)
         .filter(SqlaTable.table_name == "rates_daily")
@@ -203,6 +204,8 @@ def _ensure_public_dashboard() -> Dashboard:
 
 def main() -> None:
     with app.app_context():
+        from superset.models.dashboard import Dashboard
+
         public_role = security_manager.find_role(
             app.config.get("AUTH_ROLE_PUBLIC", "Public")
         )
