@@ -6,9 +6,15 @@ from superset import db, security_manager
 from superset.app import create_app
 
 
-DASHBOARD_SLUG = os.environ.get(
-    "PUBLIC_DASHBOARD_SLUG", "swedish-mortgages-overview"
-)
+DEFAULT_PUBLIC_DASHBOARD_SLUG = "swedish-mortgages-overview"
+PUBLIC_DASHBOARD_SLUGS = [
+    slug.strip()
+    for slug in os.environ.get(
+        "PUBLIC_DASHBOARD_SLUGS",
+        os.environ.get("PUBLIC_DASHBOARD_SLUG", DEFAULT_PUBLIC_DASHBOARD_SLUG),
+    ).split(",")
+    if slug.strip()
+]
 DASHBOARD_TITLE = "Swedish Mortgages Overview"
 CHART_NAME = "Mortgage Market Rates Snapshot"
 
@@ -168,7 +174,7 @@ def _sync_rates_daily_columns(dataset) -> None:
             column.verbose_name = column_name
 
 
-def _ensure_public_dashboard():
+def _ensure_mortgage_dashboard():
     from superset.connectors.sqla.models import SqlaTable
     from superset.models.dashboard import Dashboard
     from superset.models.slice import Slice
@@ -212,13 +218,13 @@ def _ensure_public_dashboard():
 
     dashboard = (
         db.session.query(Dashboard)
-        .filter(Dashboard.slug == DASHBOARD_SLUG)
+        .filter(Dashboard.slug == DEFAULT_PUBLIC_DASHBOARD_SLUG)
         .one_or_none()
     )
     if dashboard is None:
         dashboard = Dashboard(
             dashboard_title=DASHBOARD_TITLE,
-            slug=DASHBOARD_SLUG,
+            slug=DEFAULT_PUBLIC_DASHBOARD_SLUG,
             published=True,
             position_json="{}",
             json_metadata="{}",
@@ -238,28 +244,50 @@ def _ensure_public_dashboard():
     return dashboard
 
 
+def _public_dashboards() -> list:
+    from superset.models.dashboard import Dashboard
+
+    if DEFAULT_PUBLIC_DASHBOARD_SLUG in PUBLIC_DASHBOARD_SLUGS:
+        _ensure_mortgage_dashboard()
+
+    dashboards = (
+        db.session.query(Dashboard)
+        .filter(Dashboard.slug.in_(PUBLIC_DASHBOARD_SLUGS))
+        .all()
+    )
+    found_slugs = {dashboard.slug for dashboard in dashboards}
+    missing_slugs = set(PUBLIC_DASHBOARD_SLUGS) - found_slugs
+    if missing_slugs:
+        raise RuntimeError(
+            "Public dashboard slugs were not found: "
+            + ", ".join(sorted(missing_slugs))
+        )
+    for dashboard in dashboards:
+        dashboard.published = True
+    return dashboards
+
+
 def main() -> None:
     app = create_app()
     with app.app_context():
-        from superset.models.dashboard import Dashboard
-
         public_role = security_manager.find_role(
             app.config.get("AUTH_ROLE_PUBLIC", "Public")
         )
         if public_role is None:
             raise RuntimeError("Public role was not found")
 
-        dashboard = _ensure_public_dashboard()
+        dashboards = _public_dashboards()
 
         allowed_permissions = set(SAFE_BASE_PERMISSIONS)
 
-        for chart in dashboard.slices:
-            dataset = chart.table
-            if dataset is None:
-                continue
-            dataset_perm = dataset.get_perm()
-            allowed_permissions.add(("datasource_access", dataset_perm))
-            _grant_permission(public_role, "datasource_access", dataset_perm)
+        for dashboard in dashboards:
+            for chart in dashboard.slices:
+                dataset = chart.table
+                if dataset is None:
+                    continue
+                dataset_perm = dataset.get_perm()
+                allowed_permissions.add(("datasource_access", dataset_perm))
+                _grant_permission(public_role, "datasource_access", dataset_perm)
 
         for permission_name, view_menu_name in SAFE_BASE_PERMISSIONS:
             _grant_permission(public_role, permission_name, view_menu_name)
@@ -273,7 +301,10 @@ def main() -> None:
         ]
 
         db.session.commit()
-        print(f"Public role can read dashboard {dashboard.slug!r}")
+        print(
+            "Public role can read dashboards: "
+            + ", ".join(sorted(dashboard.slug for dashboard in dashboards))
+        )
 
 
 if __name__ == "__main__":
