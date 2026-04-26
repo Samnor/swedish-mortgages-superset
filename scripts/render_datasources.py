@@ -31,7 +31,10 @@ def load_dotenv() -> None:
 def main() -> int:
     load_dotenv()
     athena_region = os.environ.get("ATHENA_REGION", "eu-north-1")
-    athena_database = os.environ.get("ATHENA_DATABASE", "awsdatacatalog")
+    athena_schema = os.environ.get("ATHENA_SCHEMA", "swedish_mortgages_dev_marts")
+    athena_database = os.environ.get("ATHENA_DATABASE", athena_schema)
+    if athena_database.lower() == "awsdatacatalog":
+        athena_database = athena_schema
     athena_work_group = os.environ.get("ATHENA_WORK_GROUP", "primary")
     athena_staging_dir = os.environ.get("ATHENA_S3_STAGING_DIR", "")
     athena_uri = os.environ.get("ATHENA_SQLALCHEMY_URI") or (
@@ -44,7 +47,7 @@ def main() -> int:
         "SUPERSET_DATABASE_NAME": os.environ.get(
             "SUPERSET_DATABASE_NAME", "Athena Swedish Mortgages"
         ),
-        "ATHENA_SCHEMA": os.environ.get("ATHENA_SCHEMA", "swedish_mortgages_dev_marts"),
+        "ATHENA_SCHEMA": athena_schema,
         "ATHENA_SQLALCHEMY_URI": athena_uri,
     }
     rendered = Template(TEMPLATE.read_text()).substitute(values)

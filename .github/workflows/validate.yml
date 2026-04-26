@@ -46,7 +46,7 @@ jobs:
           SUPERSET_ADMIN_LASTNAME: Admin
           SUPERSET_ADMIN_EMAIL: admin@example.com
           ATHENA_REGION: eu-north-1
-          ATHENA_DATABASE: awsdatacatalog
+          ATHENA_DATABASE: swedish_mortgages_dev_marts
           ATHENA_SCHEMA: swedish_mortgages_dev_marts
           ATHENA_WORK_GROUP: primary
           ATHENA_S3_STAGING_DIR: s3://example/athena-results/

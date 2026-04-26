@@ -275,7 +275,7 @@ resource "aws_iam_role_policy" "task_athena" {
       },
       {
         Effect = "Allow"
-        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:AbortMultipartUpload"]
+        Action = ["s3:GetBucketLocation", "s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:AbortMultipartUpload"]
         Resource = [
           var.athena_results_bucket_arn,
           "${var.athena_results_bucket_arn}/*"
@@ -313,7 +313,7 @@ resource "aws_ecs_task_definition" "superset" {
       { name = "SUPERSET_ADMIN_EMAIL", value = "admin@example.com" },
       { name = "AWS_DEFAULT_REGION", value = var.aws_region },
       { name = "ATHENA_REGION", value = var.aws_region },
-      { name = "ATHENA_DATABASE", value = "awsdatacatalog" },
+      { name = "ATHENA_DATABASE", value = var.athena_schema },
       { name = "ATHENA_SCHEMA", value = var.athena_schema },
       { name = "ATHENA_WORK_GROUP", value = "primary" },
       { name = "ATHENA_S3_STAGING_DIR", value = var.athena_s3_staging_dir },

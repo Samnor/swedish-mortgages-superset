@@ -66,7 +66,7 @@ Use this SQLAlchemy URI pattern so PyAthena picks up the container's AWS
 environment credentials:
 
 ```text
-awsathena+rest://@athena.eu-north-1.amazonaws.com/awsdatacatalog?work_group=primary&s3_staging_dir=s3%3A%2F%2FYOUR-ATHENA-QUERY-RESULTS%2Fdbt-results%2F
+awsathena+rest://@athena.eu-north-1.amazonaws.com/swedish_mortgages_dev_marts?work_group=primary&s3_staging_dir=s3%3A%2F%2FYOUR-ATHENA-QUERY-RESULTS%2Fdbt-results%2F
 ```
 
 Adjust the region, catalog, workgroup, or staging dir if your `.env` differs.

@@ -68,7 +68,7 @@ outputs for `dev` and `prod`:
 - `SUPERSET_ADMIN_LASTNAME`
 - `SUPERSET_ADMIN_EMAIL`
 - `ATHENA_REGION`
-- `ATHENA_DATABASE`
+- `ATHENA_DATABASE` (set to the same Glue database/schema as `ATHENA_SCHEMA`)
 - `ATHENA_SCHEMA`
 - `ATHENA_WORK_GROUP`
 - `ATHENA_S3_STAGING_DIR`

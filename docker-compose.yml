@@ -14,7 +14,7 @@ services:
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-eu-north-1}
       ATHENA_REGION: ${ATHENA_REGION:-eu-north-1}
-      ATHENA_DATABASE: ${ATHENA_DATABASE:-awsdatacatalog}
+      ATHENA_DATABASE: ${ATHENA_DATABASE:-${ATHENA_SCHEMA:-swedish_mortgages_dev_marts}}
       ATHENA_SCHEMA: ${ATHENA_SCHEMA:-swedish_mortgages_dev_marts}
       ATHENA_WORK_GROUP: ${ATHENA_WORK_GROUP:-primary}
       ATHENA_S3_STAGING_DIR: ${ATHENA_S3_STAGING_DIR}
