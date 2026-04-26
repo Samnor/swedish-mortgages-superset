@@ -1,5 +1,9 @@
 # Swedish Mortgages Superset
 
+> Retired on 2026-04-26. Do not redeploy or run Terraform from this repo.
+> The replacement public dashboard is https://salaguno.com/mortgages/.
+> See [RETIRED.md](RETIRED.md).
+
 This repo runs a local Superset app for the Swedish mortgage marts built by
 [`Samnor/swedish-mortgages-dbt`](https://github.com/Samnor/swedish-mortgages-dbt).
 It is intentionally separate from the dbt repo so the BI app, container
